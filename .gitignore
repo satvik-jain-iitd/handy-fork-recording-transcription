@@ -42,3 +42,8 @@ blob-report/
 
 # Nix build output
 result
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
