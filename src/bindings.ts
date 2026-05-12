@@ -801,6 +801,54 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
     else return { status: "error", error: e  as any };
 }
 },
+async listTranscriptionModels() : Promise<Result<TranscriptionModelInfo[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_transcription_models") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async startTranscription(filePath: string, modelId: string, language: string | null) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("start_transcription", { filePath, modelId, language }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getTranscriptionSession(sessionId: string) : Promise<Result<TranscriptionSession, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_transcription_session", { sessionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listTranscriptionSessions() : Promise<Result<SessionSummary[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_transcription_sessions") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async exportTranscript(sessionId: string, outputPath: string | null) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_transcript", { sessionId, outputPath }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteTranscriptionSession(sessionId: string, deleteTranscriptFile: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_transcription_session", { sessionId, deleteTranscriptFile }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Checks if the Mac is a laptop by detecting battery presence
  * 
@@ -837,6 +885,27 @@ export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { whisper: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
+export type ChunkInfo = { index: number; 
+/**
+ * Start time of this chunk in the original audio, in seconds.
+ */
+start_sec: number; 
+/**
+ * End time of this chunk in the original audio, in seconds.
+ */
+end_sec: number; 
+/**
+ * Byte offset in the source file (used for progress/recovery).
+ */
+byte_offset: number; 
+/**
+ * Byte length of this chunk.
+ */
+byte_length: number; 
+/**
+ * Transcript text for this specific chunk, if available from the model.
+ */
+text: string | null }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
@@ -854,6 +923,11 @@ reset_bindings: string[] }
 export type KeyboardImplementation = "tauri" | "handy_keys"
 export type LLMPrompt = { id: string; name: string; prompt: string }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
+export type ModelFamily = "Whisper" | "Parakeet" | "Moonshine" | 
+/**
+ * For unrecognized model types. Contains a display label.
+ */
+{ Unknown: string }
 export type ModelInfo = { id: string; name: string; description: string; filename: string; url: string | null; sha256: string | null; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; is_directory: boolean; engine_type: EngineType; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; supports_language_selection: boolean; is_custom: boolean }
 export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null }
 export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
@@ -865,8 +939,132 @@ export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type SecretMap = Partial<{ [key in string]: string }>
+export type SessionStatus = "Queued" | "InProgress" | "Completed" | "Failed"
+export type SessionSummary = { session_id: string; source_file_name: string; created_at: string; status: SessionStatus; model_family: ModelFamily; 
+/**
+ * Stored for quick display without loading the full session file.
+ */
+elapsed_seconds: number | null }
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type TranscriptionModelCapabilities = { 
+/**
+ * Supported language codes, e.g. ["en"] or ["multilingual"].
+ */
+languages: string[]; 
+/**
+ * Whether the model produces word/segment timestamps.
+ */
+timestamps: boolean; 
+/**
+ * Recommended audio chunk size in seconds for this model.
+ */
+recommended_chunk_size_secs: number; 
+/**
+ * Human-readable description for the UI tooltip.
+ */
+description: string; 
+/**
+ * Known limitations, e.g. ["English only", "No timestamps"].
+ */
+limitations: string[] }
+export type TranscriptionModelInfo = { 
+/**
+ * Stable identifier derived from directory name or file stem.
+ * e.g., "whisper-base-en", "whisper-medium-v3", "parakeet-tdt-0.6b-v2"
+ */
+id: string; family: ModelFamily; 
+/**
+ * User-facing display name.
+ */
+display_name: string; 
+/**
+ * Absolute path to the model's primary file or directory.
+ */
+path: string; 
+/**
+ * True only if the adapter for this family is implemented and functional.
+ */
+supported: boolean; capabilities: TranscriptionModelCapabilities }
+export type TranscriptionProgress = { 
+/**
+ * 0.0 to 100.0
+ */
+percent: number; current_chunk: number; total_chunks: number; 
+/**
+ * Human-readable message, e.g. "Transcribing chunk 3 of 12…"
+ */
+message: string }
+export type TranscriptionSession = { 
+/**
+ * UUIDv4 generated at session creation time.
+ */
+session_id: string; 
+/**
+ * Absolute path to the source audio/video file on disk.
+ */
+source_file_path: string; 
+/**
+ * File name only (no directory component), for display purposes.
+ */
+source_file_name: string; 
+/**
+ * File size in bytes, recorded at session creation.
+ */
+source_file_size: number; 
+/**
+ * File extension or MIME type, used to determine decoding strategy.
+ * Use the lowercase file extension (e.g., "mp3", "wav", "mp4", "m4a").
+ */
+source_file_type: string; 
+/**
+ * The model_id from ModelInfo, exactly as reported by the registry.
+ */
+selected_model_id: string; 
+/**
+ * The model family, derived from registry discovery.
+ */
+model_family: ModelFamily; 
+/**
+ * ISO 8601 UTC timestamp. Set when session is first created.
+ */
+created_at: string; 
+/**
+ * ISO 8601 UTC timestamp. Set when status transitions to Completed or Failed.
+ */
+completed_at: string | null; 
+/**
+ * Elapsed wall-clock time in seconds for the full transcription job.
+ */
+elapsed_seconds: number | null; 
+/**
+ * Current lifecycle state of this session.
+ */
+status: SessionStatus; 
+/**
+ * Real-time progress snapshot, updated after each chunk.
+ */
+progress: TranscriptionProgress; 
+/**
+ * Total number of chunks the audio was split into.
+ */
+chunk_count: number; 
+/**
+ * Per-chunk metadata including text and timing information.
+ */
+chunk_metadata: ChunkInfo[]; 
+/**
+ * The complete stitched transcript text. Populated on Completed.
+ */
+transcript_text: string | null; 
+/**
+ * Absolute path to the saved .txt transcript file.
+ */
+transcript_file_path: string | null; 
+/**
+ * Human-readable error description. Populated only on Failed.
+ */
+error_message: string | null }
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type WhisperAcceleratorSetting = "auto" | "cpu" | "gpu"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }

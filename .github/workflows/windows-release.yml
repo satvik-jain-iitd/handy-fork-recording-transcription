@@ -1,0 +1,47 @@
+name: "Windows Release"
+
+on:
+  push:
+    tags:
+      - 'v*' # Jab aap 'v1.0.0' jaisa tag push karenge tabhi chalega
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: install frontend dependencies
+        run: npm install # Bun ke bina bhi GitHub par standard npm se kaam chal jayega
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__ # tauri.conf.json se version lega
+          releaseName: "Handy v__VERSION__ (Windows)"
+          releaseBody: "Offline Transcription Feature Included."
+          releaseDraft: true
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc

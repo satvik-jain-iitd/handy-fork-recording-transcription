@@ -36,7 +36,7 @@ pub struct ModelStateEvent {
     pub error: Option<String>,
 }
 
-enum LoadedEngine {
+pub(crate) enum LoadedEngine {
     Whisper(WhisperEngine),
     Parakeet(ParakeetModel),
     Moonshine(MoonshineModel),
@@ -71,8 +71,9 @@ pub struct TranscriptionManager {
     last_activity: Arc<AtomicU64>,
     shutdown_signal: Arc<AtomicBool>,
     watcher_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
-    is_loading: Arc<Mutex<bool>>,
-    loading_condvar: Arc<Condvar>,
+    pub(crate) is_loading: Arc<Mutex<bool>>,
+    pub(crate) loading_condvar: Arc<Condvar>,
+    pub(crate) engine_condvar: Arc<Condvar>,
 }
 
 impl TranscriptionManager {
@@ -87,6 +88,7 @@ impl TranscriptionManager {
             watcher_handle: Arc::new(Mutex::new(None)),
             is_loading: Arc::new(Mutex::new(false)),
             loading_condvar: Arc::new(Condvar::new()),
+            engine_condvar: Arc::new(Condvar::new()),
         };
 
         // Start the idle watcher
@@ -164,7 +166,7 @@ impl TranscriptionManager {
     }
 
     /// Lock the engine mutex, recovering from poison if a previous transcription panicked.
-    fn lock_engine(&self) -> MutexGuard<'_, Option<LoadedEngine>> {
+    pub(crate) fn lock_engine(&self) -> MutexGuard<'_, Option<LoadedEngine>> {
         self.engine.lock().unwrap_or_else(|poisoned| {
             warn!("Engine mutex was poisoned by a previous panic, recovering");
             poisoned.into_inner()
@@ -383,6 +385,7 @@ impl TranscriptionManager {
         {
             let mut engine = self.lock_engine();
             *engine = Some(loaded_engine);
+            self.engine_condvar.notify_all();
         }
         {
             let mut current_model = self.current_model_id.lock().unwrap();
@@ -638,6 +641,7 @@ impl TranscriptionManager {
                     // Success or normal error — put the engine back
                     let mut engine_guard = self.lock_engine();
                     *engine_guard = Some(engine);
+                    self.engine_condvar.notify_all();
                     inner_result?
                 }
                 Err(panic_payload) => {

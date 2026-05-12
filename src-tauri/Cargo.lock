@@ -2416,6 +2416,7 @@ name = "handy"
 version = "0.8.3"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "clap",
  "cpal",
@@ -2467,6 +2468,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "transcribe-rs",
+ "uuid",
  "vad-rs",
  "windows 0.61.3",
  "winreg 0.55.0",

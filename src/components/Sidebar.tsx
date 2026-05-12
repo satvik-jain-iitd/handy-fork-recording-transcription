@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cpu } from "lucide-react";
+import { Cog, FlaskConical, History, Info, Sparkles, Cpu, FileAudio } from "lucide-react";
 import HandyTextLogo from "./icons/HandyTextLogo";
 import HandyHand from "./icons/HandyHand";
 import { useSettings } from "../hooks/useSettings";
@@ -13,6 +13,7 @@ import {
   PostProcessingSettings,
   ModelsSettings,
 } from "./settings";
+import TranscriptionsPage from "./transcription/TranscriptionsPage";
 
 export type SidebarSection = keyof typeof SECTIONS_CONFIG;
 
@@ -54,6 +55,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.history",
     icon: History,
     component: HistorySettings,
+    enabled: () => true,
+  },
+  transcription: {
+    labelKey: "sidebar.transcription",
+    icon: FileAudio,
+    component: TranscriptionsPage,
     enabled: () => true,
   },
   postprocessing: {
