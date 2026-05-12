@@ -60,27 +60,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "Handy v__VERSION__ - Offline Transcription Update"
+          releaseName: "Handy v__VERSION__ - Offline Meeting Transcription Update"
           releaseBody: |
-            ## 🎙️ Local Meeting Transcription (Offline)
-            This update brings powerful offline transcription capabilities directly to Handy!
-
-            ### Key Features:
-            - **Local Inference**: Transcribe meetings entirely on your machine. No cloud APIs, no data leaves your device.
-            - **Multi-Format Support**: Upload `.wav`, `.mp3`, `.m4a`, `.mp4`, `.mkv`, and `.webm` files.
-            - **Model Discovery**: Automatically detects installed Whisper, Parakeet, and Moonshine models.
-            - **Chunked Pipeline**: Efficiently processes long recordings (tested up to 30+ minutes) with minimal memory footprint.
-            - **Smart Stitching**: Automatic boundary deduplication for seamless final transcripts.
-            - **Session History**: Revisit past transcriptions and export them to `.txt` anytime.
-
-            ### How to Use:
-            1. Go to the new **Transcription** tab in the sidebar.
-            2. Select an audio or video file.
-            3. Choose your Whisper model.
-            4. Click **Start Transcription** and watch the progress in real-time.
-
+            ## 🎙️ Major Update: Offline Meeting & File Transcription
+            
+            This release transforms Handy into a complete offline AI meeting assistant! 🚀
+            
+            ### 🌟 Key Improvements:
+            - **Live Meeting Transcription**: Transcribe live calls from **Webex, Zoom, Teams, Slack**, and more.
+            - **Dual-Channel Audio**: Simultaneously records your Mic and System/Speaker output.
+            - **Local File Upload**: Transcribe any pre-recorded audio or video file (`.mp3`, `.wav`, `.mp4`, etc.).
+            - **macOS Loopback**: Native support for **ScreenCaptureKit** (no virtual drivers needed!).
+            - **Windows WASAPI**: High-performance system audio capture.
+            - **Transcription History**: Save, revisit, and export your transcripts to `.txt` files.
+            
+            ### 🛠️ Proxy/Offline Installation (Portable):
+            1. Download the `.exe` (Windows) or `.dmg` (Mac).
+            2. Create a folder and place the app inside.
+            3. Create an empty file named `portable` next to the app.
+            4. Manually place Whisper models in `Data/models/`.
+            
             ---
-            *Built for Windows (x64).*
+            *Built with privacy and performance in mind. 100% Offline.*
           releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
