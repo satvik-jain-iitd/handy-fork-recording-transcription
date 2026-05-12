@@ -39,9 +39,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # tauri.conf.json se version lega
-          releaseName: "Handy v__VERSION__ (Windows)"
-          releaseBody: "Offline Transcription Feature Included."
-          releaseDraft: true
+          tagName: v__VERSION__
+          releaseName: "Handy v__VERSION__ - Offline Transcription Update"
+          releaseBody: |
+            ## 🎙️ Local Meeting Transcription (Offline)
+            This update brings powerful offline transcription capabilities directly to Handy!
+
+            ### Key Features:
+            - **Local Inference**: Transcribe meetings entirely on your machine. No cloud APIs, no data leaves your device.
+            - **Multi-Format Support**: Upload `.wav`, `.mp3`, `.m4a`, `.mp4`, `.mkv`, and `.webm` files.
+            - **Model Discovery**: Automatically detects installed Whisper, Parakeet, and Moonshine models.
+            - **Chunked Pipeline**: Efficiently processes long recordings (tested up to 30+ minutes) with minimal memory footprint.
+            - **Smart Stitching**: Automatic boundary deduplication for seamless final transcripts.
+            - **Session History**: Revisit past transcriptions and export them to `.txt` anytime.
+
+            ### How to Use:
+            1. Go to the new **Transcription** tab in the sidebar.
+            2. Select an audio or video file.
+            3. Choose your Whisper model.
+            4. Click **Start Transcription** and watch the progress in real-time.
+
+            ---
+            *Built for Windows (x64).*
+          releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
