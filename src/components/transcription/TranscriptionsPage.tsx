@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileAudio,
@@ -10,6 +10,10 @@ import {
   Loader2,
   Download,
   ExternalLink,
+  Mic,
+  Monitor,
+  Play,
+  Square,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -28,26 +32,38 @@ import { Select, SelectOption } from "../ui/Select";
 import Badge from "../ui/Badge";
 import { ProgressPayload, CompletePayload } from "@/lib/types/transcription";
 
-type ViewMode = "upload" | "history";
+type ViewMode = "upload" | "live" | "history";
+
+interface LiveTranscriptUpdate {
+  session_id: string;
+  text: string;
+  is_final: boolean;
+}
 
 const TranscriptionsPage: React.FC = () => {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>("upload");
+  
+  // File Upload State
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedFileInfo, setSelectedFileInfo] = useState<{
     name: string;
     size: number;
     type: string;
   } | null>(null);
-  const [availableModels, setAvailableModels] = useState<
-    TranscriptionModelInfo[]
-  >([]);
+  
+  // Live Meeting State
+  const [isLiveRecording, setIsLiveRecording] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [currentLiveSessionId, setCurrentLiveSessionId] = useState<string | null>(null);
+  const transcriptBottomRef = useRef<HTMLDivElement>(null);
+
+  // Common State
+  const [availableModels, setAvailableModels] = useState<TranscriptionModelInfo[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [currentProgress, setCurrentProgress] =
-    useState<TranscriptionProgress | null>(null);
-  const [currentSession, setCurrentSession] =
-    useState<TranscriptionSession | null>(null);
+  const [currentProgress, setCurrentProgress] = useState<TranscriptionProgress | null>(null);
+  const [currentSession, setCurrentSession] = useState<TranscriptionSession | null>(null);
   const [sessionHistory, setSessionHistory] = useState<SessionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModelsLoading, setIsModelsLoading] = useState(false);
@@ -58,6 +74,12 @@ const TranscriptionsPage: React.FC = () => {
     loadModels();
     loadHistory();
   }, []);
+
+  useEffect(() => {
+    if (transcriptBottomRef.current) {
+      transcriptBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [liveTranscript]);
 
   const loadModels = async () => {
     setIsModelsLoading(true);
@@ -96,6 +118,7 @@ const TranscriptionsPage: React.FC = () => {
   useEffect(() => {
     let unlistenProgress: (() => void) | undefined;
     let unlistenComplete: (() => void) | undefined;
+    let unlistenLive: (() => void) | undefined;
 
     const setupListeners = async () => {
       unlistenProgress = await listen<ProgressPayload>(
@@ -123,17 +146,28 @@ const TranscriptionsPage: React.FC = () => {
           }
         },
       );
+
+      unlistenLive = await listen<LiveTranscriptUpdate>(
+        "live-transcript-update",
+        (event) => {
+          if (event.payload.session_id === currentLiveSessionId) {
+            setLiveTranscript(prev => {
+                // This is a naive implementation, real one would handle diffs
+                return prev + " " + event.payload.text;
+            });
+          }
+        }
+      );
     };
 
-    if (currentSessionId) {
-      setupListeners();
-    }
+    setupListeners();
 
     return () => {
       if (unlistenProgress) unlistenProgress();
       if (unlistenComplete) unlistenComplete();
+      if (unlistenLive) unlistenLive();
     };
-  }, [currentSessionId]);
+  }, [currentSessionId, currentLiveSessionId]);
 
   const handleFileSelect = async () => {
     try {
@@ -183,6 +217,44 @@ const TranscriptionsPage: React.FC = () => {
     } catch (e) {
       toast.error("Failed to start transcription");
       setIsLoading(false);
+    }
+  };
+
+  const handleStartLiveMeeting = async () => {
+    if (!selectedModelId) {
+      toast.error("Please select a model first");
+      return;
+    }
+
+    try {
+      const result = await commands.startLiveMeeting(selectedModelId);
+      if (result.status === "ok") {
+        setIsLiveRecording(true);
+        setCurrentLiveSessionId(result.data);
+        setLiveTranscript("");
+        toast.success("Live meeting recording started");
+      } else {
+        toast.error(result.error);
+      }
+    } catch (e) {
+      toast.error("Failed to start live meeting");
+    }
+  };
+
+  const handleStopLiveMeeting = async () => {
+    if (!currentLiveSessionId) return;
+
+    try {
+      const result = await commands.stopLiveMeeting(currentLiveSessionId);
+      if (result.status === "ok") {
+        setIsLiveRecording(false);
+        toast.success("Live meeting recording stopped");
+        loadHistory();
+      } else {
+        toast.error(result.error);
+      }
+    } catch (e) {
+      toast.error("Failed to stop live meeting");
     }
   };
 
@@ -253,6 +325,15 @@ const TranscriptionsPage: React.FC = () => {
           <div className="flex items-center justify-center gap-2">
             <Upload size={18} />
             Transcribe File
+          </div>
+        </button>
+        <button
+          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${viewMode === "live" ? "text-logo-primary border-b-2 border-logo-primary" : "text-text/60 hover:text-text/80"}`}
+          onClick={() => setViewMode("live")}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Mic size={18} />
+            Live Meeting
           </div>
         </button>
         <button
@@ -343,12 +424,6 @@ const TranscriptionsPage: React.FC = () => {
                 disabled={isLoading || isModelsLoading}
                 placeholder="Select a model..."
               />
-              {availableModels.length === 0 && !isModelsLoading && (
-                <p className="text-xs text-red-400">
-                  No transcription models installed. Place Whisper model files in
-                  your models folder.
-                </p>
-              )}
             </div>
 
             {/* Actions & Progress */}
@@ -409,25 +484,76 @@ const TranscriptionsPage: React.FC = () => {
                 <div className="bg-mid-gray/5 border border-mid-gray/20 rounded-xl p-4 max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed font-mono text-text">
                   {currentSession.transcript_text}
                 </div>
-
-                {currentSession.transcript_file_path && (
-                  <p className="text-xs text-text/40 flex items-center gap-1">
-                    <CheckCircle2 size={12} className="text-green-500/50" />
-                    Automatically saved next to source file.
-                  </p>
-                )}
               </div>
             )}
-
-            {currentSession && currentSession.status === "Failed" && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex gap-3 items-start animate-in fade-in duration-300">
-                <AlertCircle className="text-red-500 shrink-0" />
-                <div>
-                  <p className="font-semibold text-red-500">Transcription Failed</p>
-                  <p className="text-sm text-red-400/80">
-                    {currentSession.error_message}
-                  </p>
+          </div>
+        ) : viewMode === "live" ? (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-mid-gray/10 rounded-2xl p-8 border border-mid-gray/20 flex flex-col items-center gap-6 shadow-xl">
+              <div className="flex items-center gap-8">
+                <div className={`flex flex-col items-center gap-2 transition-all ${isLiveRecording ? "scale-110" : "opacity-40"}`}>
+                   <div className={`p-4 rounded-full ${isLiveRecording ? "bg-red-500 animate-pulse" : "bg-mid-gray/30"}`}>
+                      <Mic size={32} className="text-white" />
+                   </div>
+                   <span className="text-xs font-bold uppercase tracking-widest">Microphone</span>
                 </div>
+                
+                <div className="h-12 w-px bg-mid-gray/30" />
+
+                <div className={`flex flex-col items-center gap-2 transition-all ${isLiveRecording ? "scale-110" : "opacity-40"}`}>
+                   <div className={`p-4 rounded-full ${isLiveRecording ? "bg-logo-primary animate-pulse" : "bg-mid-gray/30"}`}>
+                      <Monitor size={32} className="text-white" />
+                   </div>
+                   <span className="text-xs font-bold uppercase tracking-widest">System Audio</span>
+                </div>
+              </div>
+
+              <div className="w-full max-w-md space-y-4">
+                 <p className="text-center text-text/60 text-sm">
+                    Recording both your voice and meeting participants from Webex, Zoom, Teams, etc.
+                 </p>
+                 
+                 <Select
+                    value={selectedModelId}
+                    options={modelOptions}
+                    onChange={(val) => setSelectedModelId(val)}
+                    disabled={isLiveRecording || isModelsLoading}
+                    placeholder="Choose transcription model..."
+                 />
+
+                 <Button
+                    variant={isLiveRecording ? "danger" : "primary"}
+                    size="lg"
+                    className="w-full h-14 text-lg font-bold shadow-xl"
+                    onClick={isLiveRecording ? handleStopLiveMeeting : handleStartLiveMeeting}
+                 >
+                    {isLiveRecording ? (
+                      <div className="flex items-center gap-2">
+                        <Square size={20} fill="currentColor" />
+                        Stop Recording
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Play size={20} fill="currentColor" />
+                        Start Live Meeting
+                      </div>
+                    )}
+                 </Button>
+              </div>
+            </div>
+
+            {(isLiveRecording || liveTranscript) && (
+              <div className="flex flex-col h-[500px] border border-mid-gray/20 rounded-2xl overflow-hidden shadow-inner bg-mid-gray/5">
+                 <div className="bg-mid-gray/10 px-4 py-2 border-b border-mid-gray/20 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase tracking-widest opacity-50">Live Transcript</span>
+                    {isLiveRecording && <Badge variant="primary" className="animate-pulse">Live</Badge>}
+                 </div>
+                 <div className="flex-1 overflow-y-auto p-6 space-y-4 font-mono text-sm leading-relaxed scrollbar-thin">
+                    <div className="whitespace-pre-wrap">
+                        {liveTranscript || <span className="opacity-30 italic">Waiting for speech...</span>}
+                    </div>
+                    <div ref={transcriptBottomRef} />
+                 </div>
               </div>
             )}
           </div>
@@ -482,12 +608,6 @@ const TranscriptionsPage: React.FC = () => {
                           </span>
                           <span>•</span>
                           <span>{getFamilyName(session.model_family)}</span>
-                          {session.elapsed_seconds && (
-                            <>
-                              <span>•</span>
-                              <span>{Math.round(session.elapsed_seconds)}s</span>
-                            </>
-                          )}
                         </div>
                       </div>
                     </div>

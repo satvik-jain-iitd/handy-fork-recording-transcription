@@ -440,6 +440,20 @@ impl TranscriptionManager {
         current_model.clone()
     }
 
+    pub fn get_vad_detector(app: &AppHandle) -> Box<dyn crate::audio_toolkit::VoiceActivityDetector> {
+        let vad_path = app
+            .path()
+            .resolve(
+                "resources/models/silero_vad_v4.onnx",
+                tauri::path::BaseDirectory::Resource,
+            )
+            .unwrap();
+        
+        let silero = crate::audio_toolkit::SileroVad::new(vad_path.to_str().unwrap(), 0.3)
+            .expect("Failed to create Silero VAD");
+        Box::new(crate::audio_toolkit::vad::SmoothedVad::new(Box::new(silero), 15, 15, 2))
+    }
+
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
         #[cfg(debug_assertions)]
         if std::env::var("HANDY_FORCE_TRANSCRIPTION_FAILURE").is_ok() {

@@ -2413,13 +2413,14 @@ dependencies = [
 
 [[package]]
 name = "handy"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
  "clap",
  "cpal",
+ "crossbeam-channel",
  "enigo",
  "env_filter",
  "ferrous-opencc",
@@ -2435,11 +2436,13 @@ dependencies = [
  "rdev 0.5.0-2",
  "regex",
  "reqwest 0.12.28",
+ "ringbuf",
  "rodio",
  "rubato",
  "rusqlite",
  "rusqlite_migration",
  "rustfft",
+ "screencapturekit",
  "serde",
  "serde_json",
  "sha2",
@@ -4983,6 +4986,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ringbuf"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe47b720588c8702e34b5979cb3271a8b1842c7cb6f57408efa70c779363488c"
+dependencies = [
+ "crossbeam-utils",
+ "portable-atomic",
+ "portable-atomic-util",
+]
+
+[[package]]
 name = "ringbuffer"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5291,6 +5305,12 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "screencapturekit"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ced3171ac2f954666659ed9d885b4690e7e680d154cbc64f65925e55a54e5b5e"
 
 [[package]]
 name = "seahash"

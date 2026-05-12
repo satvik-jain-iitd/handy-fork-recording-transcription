@@ -1,6 +1,6 @@
 [package]
 name = "handy"
-version = "0.8.3"
+version = "0.9.0"
 description = "Handy"
 authors = ["cjpais"]
 edition = "2021"
@@ -69,6 +69,8 @@ chrono = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tar = "0.4.44"
 uuid = { version = "1", features = ["v4"] }
+ringbuf = "0.4"
+crossbeam-channel = "0.5"
 flate2 = "1.0"
 sha2 = "0.10"
 transcribe-rs = { version = "0.3.8", features = ["whisper-cpp", "onnx"] }
@@ -103,6 +105,7 @@ winreg = "0.55"
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 transcribe-rs = { version = "0.3.3", features = ["whisper-metal"] }
+screencapturekit = "0.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
